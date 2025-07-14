@@ -65,18 +65,22 @@ class ScheadulesController extends Controller
         $days = CarbonPeriod::create($start, $end);
     
         foreach ($days as $date) {
-            $dayName = strtolower($date->format('l')); // monday, tuesday, dst
+            $dayName = strtolower($date->format('l')); // monday, tuesday, etc.
     
             if (isset($request->jadwal[$dayName])) {
-                $shiftId = $request->jadwal[$dayName]['shift'];
-                $users = $request->jadwal[$dayName]['users'];
+                $shiftId = $request->jadwal[$dayName]['shift'] ?? null;
     
-                foreach ($users as $userId) {
-                    Scheadules::create([
-                        'date_schedule' => $date->toDateString(),
-                        'id_shift' => $shiftId,
-                        'id_user' => $userId,
-                    ]);
+                // Pastikan shift diisi dan users-nya tersedia (tidak error)
+                if ($shiftId && isset($request->jadwal[$dayName]['users']) && is_array($request->jadwal[$dayName]['users'])) {
+                    $users = $request->jadwal[$dayName]['users'];
+    
+                    foreach ($users as $userId) {
+                        Scheadules::create([
+                            'date_schedule' => $date->toDateString(),
+                            'id_shift' => $shiftId,
+                            'id_user' => $userId,
+                        ]);
+                    }
                 }
             }
         }

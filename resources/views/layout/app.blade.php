@@ -19,6 +19,31 @@
 
     <!-- Custom styles for this template-->
     <link href="{{ asset('assets/css/sb-admin-2.min.css') }}" rel="stylesheet">
+    <style>
+        .fixed-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1030;
+        }
+
+        .fixed-topbar {
+        position: fixed;
+        top: 0;
+        left: 250px; /* geser sejajar dengan sidebar */
+        right: 0;
+        height: 70px; /* sesuaikan jika berbeda */
+        z-index: 1040;
+        background-color: #fff; /* tambahkan background agar tidak transparan */
+        border-bottom: 1px solid #e3e6f0;
+    }
+
+        #content-wrapper {
+            margin-left: 250px;
+        }
+    </style>
 
 </head>
 

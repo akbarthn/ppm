@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\ScheadulesController;
 use App\Http\Controllers\AbsensiController;
+use App\Http\Controllers\ReportController;
 
 
 // Form login
@@ -31,4 +32,6 @@ Route::get('/absensi/{shift}/scan', [AbsensiController::class, 'scan'])->name('a
 Route::post('/absensi/checkin', [AbsensiController::class, 'checkin'])->name('absensi.checkin');
 Route::post('/absensi/checkout', [AbsensiController::class, 'checkout'])->name('absensi.checkout');
 Route::post('/absensi/keterangan', [AbsensiController::class, 'setKeterangan'])->name('absensi.keterangan');
+Route::get('/reports/attendance', [ReportController::class, 'attendanceReport'])->name('reports.attendance');
+
     });
