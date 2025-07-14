@@ -2,10 +2,7 @@
 
             <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard.index')}}">
-                <div class="sidebar-brand-icon rotate-n-15">
-                    <i class="fas fa-laugh-wink"></i>
-                </div>
-                <div class="sidebar-brand-text mx-3"> Absensi </div>
+                <div class="sidebar-brand-text mx-3"> FaceID Essence </div>
             </a>
 
             <!-- Divider -->
@@ -26,20 +23,31 @@
             </li>
 
 
-            <li class="nav-item">
-                <a class="nav-link" href="index.html">
+            <li class="nav-item {{ request()->routeIs('jadwal.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('jadwal.index') }}">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
                     <span>Jadwal</span></a>
             </li>
 
-            <li class="nav-item">
-                <a class="nav-link" href="index.html">
+            <li class="nav-item {{ request()->routeIs('shift.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('shift.index') }}">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
                     <span>Shift</span></a>
             </li>
 
             <!-- Divider -->
             <hr class="sidebar-divider">
+
+            <!-- Heading -->
+            <div class="sidebar-heading">
+                Admin
+            </div>
+
+            <li class="nav-item" {{ request()->routeIs('absensi.*') ? 'active' : '' }}">    
+                <a class="nav-link" href="{{ route('absensi.index') }}">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>Absensi</span></a>
+            </li>
 
             <!-- Heading -->
             <div class="sidebar-heading">

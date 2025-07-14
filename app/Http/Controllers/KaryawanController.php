@@ -5,75 +5,101 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class KaryawanController extends Controller
 {
-    // Tampilkan semua karyawan
     public function index()
     {
         $karyawans = User::all();
         return view('karyawan.index', compact('karyawans'));
     }
 
-    // Tampilkan form tambah
     public function create()
     {
         return view('karyawan.create');
     }
 
-    // Simpan data baru
     public function store(Request $request)
     {
         $request->validate([
             'nama' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'address' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'password' => $request->has('role') ? 'required|string|min:6' : 'nullable',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        User::create([
+        $user = User::create([
             'nama' => $request->nama,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'address' => $request->address,
+            'password' => $request->has('role') ? Hash::make($request->password) : null,
             'phone' => $request->phone,
-            'role' => 'admin'
+            'address' => $request->address,
+            'role' => $request->has('role') ? 'admin' : null,
         ]);
 
-        return redirect()->route('karyawan.index')->with('success', 'Data karyawan berhasil ditambahkan');
+        if ($request->hasFile('image')) {
+            $imageName = time() . '.' . $request->image->extension();
+            $request->image->move(public_path('foto_karyawan'), $imageName);
+            $user->image = $imageName;
+            $user->save();
+        }
+
+        return redirect()->route('karyawan.index')->with('success', 'Karyawan berhasil ditambahkan.');
     }
 
-    // Tampilkan form edit
     public function edit(User $karyawan)
     {
         return view('karyawan.edit', compact('karyawan'));
     }
 
-    // Update data
-    public function update(Request $request, User $karyawan)
+    public function update(Request $request, $id)
     {
         $request->validate([
             'nama' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $karyawan->id,
-            'address' => 'nullable|string',
+            'email' => 'required|email|unique:users,email,' . $id,
             'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'password' => $request->has('role') && $request->filled('password') ? 'required|string|min:6' : 'nullable',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $karyawan->update([
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'address' => $request->address,
-            'phone' => $request->phone,
-        ]);
+        $karyawan = User::findOrFail($id);
+        $karyawan->nama = $request->nama;
+        $karyawan->email = $request->email;
+        $karyawan->phone = $request->phone;
+        $karyawan->address = $request->address;
+        $karyawan->role = $request->has('role') ? 'admin' : null;
 
-        return redirect()->route('karyawan.index')->with('success', 'Data karyawan berhasil diubah');
+        if ($request->filled('password')) {
+            $karyawan->password = Hash::make($request->password);
+        }
+
+        if ($request->hasFile('image')) {
+            if ($karyawan->image && file_exists(public_path('foto_karyawan/' . $karyawan->image))) {
+                unlink(public_path('foto_karyawan/' . $karyawan->image));
+            }
+
+            $imageName = time() . '.' . $request->image->extension();
+            $request->image->move(public_path('foto_karyawan'), $imageName);
+            $karyawan->image = $imageName;
+        }
+
+        $karyawan->save();
+
+        return redirect()->route('karyawan.index')->with('success', 'Data karyawan berhasil diupdate.');
     }
 
-    // Hapus data
     public function destroy(User $karyawan)
     {
+        if ($karyawan->image && file_exists(public_path('foto_karyawan/' . $karyawan->image))) {
+            unlink(public_path('foto_karyawan/' . $karyawan->image));
+        }
+
         $karyawan->delete();
+
         return redirect()->route('karyawan.index')->with('success', 'Data karyawan berhasil dihapus');
     }
 }

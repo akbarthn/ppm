@@ -23,10 +23,11 @@
             </div>
         @endif
 
-        <form action="{{ route('karyawan.update', $karyawan->id) }}" method="POST">
+        <form action="{{ route('karyawan.update', $karyawan->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
+            {{-- Nama --}}
             <div class="form-group row">
                 <label for="nama" class="col-sm-3 col-form-label">Nama Lengkap:</label>
                 <div class="col-sm-9">
@@ -34,6 +35,7 @@
                 </div>
             </div>
 
+            {{-- Email --}}
             <div class="form-group row">
                 <label for="email" class="col-sm-3 col-form-label">Email:</label>
                 <div class="col-sm-9">
@@ -41,6 +43,26 @@
                 </div>
             </div>
 
+            {{-- Checkbox Jadikan Admin --}}
+            <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Jadikan Admin:</label>
+                <div class="col-sm-9">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="role" name="role" value="admin" onchange="togglePasswordField()" {{ old('role', $karyawan->role) == 'admin' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="role">Centang jika ingin menjadikan user sebagai admin</label>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Password: hanya tampil jika checkbox dicentang --}}
+            <div class="form-group row" id="password-group" style="display: none;">
+                <label for="password" class="col-sm-3 col-form-label">Password Baru:</label>
+                <div class="col-sm-9">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Kosongkan jika tidak ingin mengubah password">
+                </div>
+            </div>
+
+            {{-- Phone --}}
             <div class="form-group row">
                 <label for="phone" class="col-sm-3 col-form-label">Nomor HP:</label>
                 <div class="col-sm-9">
@@ -48,6 +70,7 @@
                 </div>
             </div>
 
+            {{-- Address --}}
             <div class="form-group row">
                 <label for="address" class="col-sm-3 col-form-label">Alamat:</label>
                 <div class="col-sm-9">
@@ -55,6 +78,21 @@
                 </div>
             </div>
 
+            {{-- Image --}}
+            <div class="form-group row">
+                <label for="image" class="col-sm-3 col-form-label">Foto Karyawan:</label>
+                <div class="col-sm-9">
+                    <input type="file" class="form-control-file" id="image" name="image">
+                    @if(isset($karyawan) && $karyawan->image)
+                        <small>Foto saat ini: <br>
+                        <img src="{{ asset('storage/foto_karyawan/' . $karyawan->image) }}" alt="Foto" class="img-thumbnail mt-2" width="150">
+                        </small>
+                    @endif
+                </div>
+            </div>
+
+
+            {{-- Tombol --}}
             <div class="form-group row">
                 <div class="col-sm-9 offset-sm-3">
                     <button type="submit" class="btn btn-primary">Update</button>
@@ -64,4 +102,21 @@
         </form>
     </div>
 </div>
+
+{{-- Script untuk toggle password --}}
+<script>
+    function togglePasswordField() {
+        const checkbox = document.getElementById('role');
+        const passwordGroup = document.getElementById('password-group');
+        if (checkbox.checked) {
+            passwordGroup.style.display = 'flex';
+        } else {
+            passwordGroup.style.display = 'none';
+        }
+    }
+
+    // Panggil di awal saat halaman dimuat
+    window.onload = togglePasswordField;
+</script>
+
 @endsection
