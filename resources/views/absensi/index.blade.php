@@ -5,6 +5,7 @@
 
 @foreach($jadwal as $group)
     @php
+        $aksi = $aksi ?? 'checkin';
         $shift = $group['shift'];
         $items = $group['items'];
     @endphp
@@ -12,7 +13,8 @@
     <div class="card mb-4">
         <div class="card-header">
             <strong>Shift: {{ $shift->name }} ({{ substr($shift->start, 0, 5) }} - {{ substr($shift->end, 0, 5) }})</strong>
-            <a href="{{ route('absensi.scan', $shift->id) }}" class="btn btn-primary btn-sm float-end">Mulai Scan</a>
+            <a href="{{ route('absensi.scan', ['shift_id' => $shift->id, 'aksi' => 'checkin']) }}" class="btn btn-success btn-sm float-end ms-2">Masuk</a>
+<a href="{{ route('absensi.scan', ['shift_id' => $shift->id, 'aksi' => 'checkout']) }}" class="btn btn-primary btn-sm float-end">Pulang</a>
         </div>
         <div class="card-body">
             <table class="table table-bordered table-striped">
@@ -39,8 +41,10 @@
                             <td>{{ $jadwal->check_in ?? '-' }}</td>
                             <td>{{ $jadwal->check_out ?? '-' }}</td>
                             <td>
-                                <form action="{{ route('absensi.keterangan') }}" method="POST" class="d-inline">
+                            <form id="form-absensi" method="POST" action="{{ $aksi == 'checkin' ? route('absensi.checkin') : route('absensi.checkout') }}">
                                     @csrf
+                                    <input type="hidden" name="nama" id="nama">
+                                    <input type="hidden" name="id_jadwal" value="{{ $jadwal->id }}">
                                     <input type="hidden" name="id_user" value="{{ $jadwal->id_user }}">
                                     <input type="hidden" name="date_schedule" value="{{ $jadwal->date_schedule }}">
                                     <input type="hidden" name="id_shift" value="{{ $jadwal->id_shift }}">

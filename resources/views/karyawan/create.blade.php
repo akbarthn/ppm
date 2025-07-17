@@ -85,7 +85,7 @@
             
             @if(isset($karyawan) && $karyawan->image)
                 @php
-                    $imagePath = 'storage/foto_karyawan/' . $karyawan->image;
+                    $imagePath = '/foto_karyawan' . $karyawan->image;
                 @endphp
                 @if (file_exists(public_path($imagePath)))
                     <small>Foto saat ini:</small><br>

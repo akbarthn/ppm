@@ -21,7 +21,7 @@
             <table class="table table-bordered table-striped">
                 <thead class="table-dark text-center">
                     <tr>
-                        <th>#</th>
+                        <th>No</th>
                         <th>Nama Karyawan</th>
                         <th>Tanggal</th>
                         <th>Shift</th>

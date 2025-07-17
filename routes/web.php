@@ -6,14 +6,21 @@ use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\ScheadulesController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\FaceRecognitionController;
 
+// Tampilkan form login (GET /login)
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login')->middleware('guest');
 
-// Form login
-Route::get('/', [AuthController::class, 'showLoginForm'])->name('login')->middleware('guest');
-// Aksi login
+// Aksi login (POST /login)
 Route::post('/login', [AuthController::class, 'login']);
-// Logout
+
+// Logout (POST /logout)
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Redirect dari / ke login
+Route::get('/', function () {
+    return redirect()->route('login');
+});
 
 // Dashboard redirect (hanya contoh)
 Route::get('/dashboard', function () {
@@ -28,10 +35,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/jadwal-group/edit', [ScheadulesController::class, 'editGroup'])->name('jadwal.editGroup');
     Route::put('/jadwal-group/update', [ScheadulesController::class, 'updateGroup'])->name('jadwal.updateGroup');
     Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
-Route::get('/absensi/{shift}/scan', [AbsensiController::class, 'scan'])->name('absensi.scan');
+Route::get('/absensi/{shift_id}/scan/{aksi}', [AbsensiController::class, 'scan'])->name('absensi.scan');
 Route::post('/absensi/checkin', [AbsensiController::class, 'checkin'])->name('absensi.checkin');
 Route::post('/absensi/checkout', [AbsensiController::class, 'checkout'])->name('absensi.checkout');
 Route::post('/absensi/keterangan', [AbsensiController::class, 'setKeterangan'])->name('absensi.keterangan');
 Route::get('/reports/attendance', [ReportController::class, 'attendanceReport'])->name('reports.attendance');
+
+// Route untuk tampilan pengenalan wajah
+Route::get('/scan', [FaceRecognitionController::class, 'index']);
 
     });
