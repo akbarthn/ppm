@@ -47,7 +47,7 @@ class ScheadulesController extends Controller
     
     public function create()
     {
-        $users = User::where('role', null)->get(); // hanya karyawan
+        $users = User::whereNull('role')->get(); // hanya karyawan
         $shifts = Shift::all(); // misal: shift pagi & sore
         return view('jadwal.create', compact('users', 'shifts'));
     }
@@ -57,36 +57,36 @@ class ScheadulesController extends Controller
         $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'shift_id' => 'required|exists:shift,id', // shift global
             'jadwal' => 'required|array',
         ]);
-    
+
         $start = Carbon::parse($request->start_date);
         $end = Carbon::parse($request->end_date);
         $days = CarbonPeriod::create($start, $end);
-    
+
+        $shiftId = $request->shift_id; // shift berlaku global
+
         foreach ($days as $date) {
             $dayName = strtolower($date->format('l')); // monday, tuesday, etc.
-    
-            if (isset($request->jadwal[$dayName])) {
-                $shiftId = $request->jadwal[$dayName]['shift'] ?? null;
-    
-                // Pastikan shift diisi dan users-nya tersedia (tidak error)
-                if ($shiftId && isset($request->jadwal[$dayName]['users']) && is_array($request->jadwal[$dayName]['users'])) {
-                    $users = $request->jadwal[$dayName]['users'];
-    
-                    foreach ($users as $userId) {
-                        Scheadules::create([
-                            'date_schedule' => $date->toDateString(),
-                            'id_shift' => $shiftId,
-                            'id_user' => $userId,
-                        ]);
-                    }
+
+            // Hanya proses hari jika ada user-nya
+            if (isset($request->jadwal[$dayName]) && is_array($request->jadwal[$dayName])) {
+                $users = $request->jadwal[$dayName];
+
+                foreach ($users as $userId) {
+                    // Cegah data duplikat (opsional, bisa pakai updateOrCreate jika perlu)
+                    Scheadules::firstOrCreate([
+                        'date_schedule' => $date->toDateString(),
+                        'id_shift' => $shiftId,
+                        'id_user' => $userId,
+                    ]);
                 }
             }
         }
-    
         return redirect()->route('jadwal.index')->with('success', 'Jadwal berhasil dibuat.');
     }
+    
 
     public function destroyGroup(Request $request)
     {
@@ -107,7 +107,7 @@ class ScheadulesController extends Controller
         ->with('user', 'shift')
         ->get();
 
-    $users = User::where('role', null)->get(); // hanya karyawan
+    $users = User::whereNull('role')->get(); // hanya karyawan
     $shifts = Shift::all();
 
     return view('jadwal.edit-group', compact('jadwal', 'users', 'shifts', 'date', 'shiftId'));

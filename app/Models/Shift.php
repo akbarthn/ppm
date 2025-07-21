@@ -16,6 +16,11 @@ class Shift extends Model
         'name', 'start', 'end'
     ];
 
+    public function scheadules()
+    {
+        return $this->hasMany(Scheadules::class, 'id_shift');
+    }
+    
     /**
      * Hitung durasi shift dalam menit.
      */

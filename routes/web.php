@@ -6,7 +6,7 @@ use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\ScheadulesController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\FaceRecognitionController;
+use App\Http\Controllers\ProfilController;
 
 // Tampilkan form login (GET /login)
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login')->middleware('guest');
@@ -35,13 +35,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/jadwal-group/edit', [ScheadulesController::class, 'editGroup'])->name('jadwal.editGroup');
     Route::put('/jadwal-group/update', [ScheadulesController::class, 'updateGroup'])->name('jadwal.updateGroup');
     Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
-Route::get('/absensi/{shift_id}/scan/{aksi}', [AbsensiController::class, 'scan'])->name('absensi.scan');
-Route::post('/absensi/checkin', [AbsensiController::class, 'checkin'])->name('absensi.checkin');
-Route::post('/absensi/checkout', [AbsensiController::class, 'checkout'])->name('absensi.checkout');
-Route::post('/absensi/keterangan', [AbsensiController::class, 'setKeterangan'])->name('absensi.keterangan');
-Route::get('/reports/attendance', [ReportController::class, 'attendanceReport'])->name('reports.attendance');
-
-// Route untuk tampilan pengenalan wajah
-Route::get('/scan', [FaceRecognitionController::class, 'index']);
+    Route::get('/absensi/scan', [AbsensiController::class, 'scan'])->name('absensi.scan');
+    Route::post('/absensi/check-status', [AbsensiController::class, 'checkStatus']); // <--- PASTIKAN BARIS INI ADA
+    Route::post('/absensi/checkin', [AbsensiController::class, 'checkin']);
+    Route::post('/absensi/checkout', [AbsensiController::class, 'checkout']);
+    Route::post('/absensi/keterangan', [AbsensiController::class, 'setKeterangan'])->name('absensi.keterangan');
+    Route::get('/reports/attendance', [ReportController::class, 'attendanceReport'])->name('reports.attendance');
+    Route::get('/profil', [ProfilController::class, 'index'])->name('profil.index');
+    Route::get('/profil/edit', [ProfilController::class, 'edit'])->name('profil.edit');
+    Route::post('/profil/update', [ProfilController::class, 'update'])->name('profil.update');
 
     });
