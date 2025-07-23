@@ -36,7 +36,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/jadwal-group/update', [ScheadulesController::class, 'updateGroup'])->name('jadwal.updateGroup');
     Route::get('/absensi', [AbsensiController::class, 'index'])->name('absensi.index');
     Route::get('/absensi/scan', [AbsensiController::class, 'scan'])->name('absensi.scan');
-    Route::post('/absensi/check-status', [AbsensiController::class, 'checkStatus']); // <--- PASTIKAN BARIS INI ADA
+    Route::post('/absensi/check-status', [AbsensiController::class, 'checkStatus'])->name('absensi.checkStatus');
     Route::post('/absensi/checkin', [AbsensiController::class, 'checkin']);
     Route::post('/absensi/checkout', [AbsensiController::class, 'checkout']);
     Route::post('/absensi/keterangan', [AbsensiController::class, 'setKeterangan'])->name('absensi.keterangan');

@@ -49,4 +49,10 @@ class Shift extends Model
     {
         return Carbon::createFromFormat('H:i:s', $this->end)->format('H:i');
     }
+
+    public function shift()
+{
+    return $this->belongsTo(Shift::class);
+}
+
 }

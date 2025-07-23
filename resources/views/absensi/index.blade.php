@@ -25,7 +25,7 @@
                         <th>Shift</th>
                         <th>Keterangan</th>
                         <th>Masuk</th>
-                        <th>Pulang</th> Out</th>
+                        <th>Pulang</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>

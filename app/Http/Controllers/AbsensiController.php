@@ -2,301 +2,193 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\Scheadules;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AbsensiController extends Controller
 {
-    public function index()
-    {
-        $today = Carbon::today()->toDateString();
+    // Konstanta untuk waktu check-in/out
+    private const CHECKIN_EARLY_MINUTES = 15;
+    private const CHECKIN_LATE_MINUTES = 30;
+    private const CHECKOUT_EARLY_MINUTES = 30;
+    private const CHECKOUT_LATE_MINUTES = 60;
 
-        // Ambil semua shift
-        $shifts = Shift::all();
+public function index()
+{
+    $today = Carbon::today()->toDateString();
+    $userId = auth()->id();
 
-        // Ambil semua jadwal hari ini dan group by shift
-        $jadwals = Scheadules::with(['user', 'shift'])
-            ->where('date_schedule', $today)
-            ->get()
-            ->groupBy('id_shift');
+    $shifts = Shift::all();
+    $jadwal = [];
 
-        // Siapkan array untuk menampilkan semua shift, meskipun tidak ada data jadwalnya
-        $data = collect();
+    foreach ($shifts as $shift) {
+        $items = Scheadules::with('user')
+            ->where('id_shift', $shift->id) // SESUAIKAN INI DENGAN KOLOM YANG BENAR
+            ->whereDate('date_schedule', $today)
+            ->get();
 
-        foreach ($shifts as $shift) {
-            $items = $jadwals->get($shift->id, collect());
-
-            // Tambahkan logika aksi per item
-            $items = $items->map(function ($item) {
-                if (!$item->check_in) {
-                    $item->aksi = 'checkin';
-                } elseif ($item->check_in && !$item->check_out) {
-                    $item->aksi = 'checkout';
-                } else {
-                    $item->aksi = 'done'; // Sudah check in dan check out
-                }
-                return $item;
-            });
-
-            $data->push([
+        if ($items->count() > 0) {
+            $jadwal[] = [
                 'shift' => $shift,
-                'items' => $items,
-            ]);
+                'items' => $items
+            ];
         }
-
-        return view('absensi.index', [
-            'jadwal' => $data,
-            'today' => $today,
-        ]);
-        // Baris ini dihapus karena duplikat: return view('absensi.index', compact('shifts', 'jadwals', 'aksi'));
     }
+
+    return view('absensi.index', compact('jadwal'));
+}
 
     public function scan()
     {
-        return view('absensi.scan');
+        return view('absensi.scan'); // Pastikan ada file resources/views/absensi/scan.blade.php
     }
 
+
     public function checkStatus(Request $request)
-    {
-        $request->validate([
-            'nama' => 'required|string',
-        ]);
+{
+    try {
+        $user = User::find($request->id); // <-- Ubah dari where('nama') menjadi find(id)
+        if (!$user) return $this->respondFail('User tidak ditemukan', 404);
 
-        $user = User::where('nama', $request->nama)->first();
-
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'msg' => '❌ Wajah tidak dikenali atau user tidak terdaftar.'
-            ], 404);
-        }
-
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today();
         $now = Carbon::now();
 
-        // Ambil semua jadwal user untuk hari ini
         $jadwals = Scheadules::with('shift')
+            ->whereDate('date_schedule', $today)
             ->where('id_user', $user->id)
-            ->where('date_schedule', $today)
             ->get();
 
-        if ($jadwals->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'msg' => "❌ Tidak ada jadwal absensi untuk {$user->nama} hari ini."
-            ]);
-        }
+        if ($jadwals->isEmpty()) return $this->respondFail('Tidak ada jadwal untuk hari ini.');
 
-        $foundRelevantShift = false;
-        $responseDetails = [];
+        $matchedShift = null;
+        $bestScore = -1;
 
         foreach ($jadwals as $jadwal) {
             $shift = $jadwal->shift;
-            if (!$shift) {
-                Log::warning("Shift tidak ditemukan untuk jadwal ID: {$jadwal->id}");
-                continue;
+
+            if (!$shift) continue;
+
+            $shiftStart = Carbon::createFromFormat('H:i:s', $shift->start_time);
+            $shiftEnd = Carbon::createFromFormat('H:i:s', $shift->end_time);
+
+            $checkinStart = $shiftStart->copy()->subMinutes(self::CHECKIN_EARLY_MINUTES);
+            $checkinEnd = $shiftStart->copy()->addMinutes(self::CHECKIN_LATE_MINUTES);
+            $checkoutStart = $shiftEnd->copy()->subMinutes(self::CHECKOUT_EARLY_MINUTES);
+            $checkoutEnd = $shiftEnd->copy()->addMinutes(self::CHECKOUT_LATE_MINUTES);
+
+            $score = 0;
+            $status = null;
+
+            if ($now->between($checkinStart, $checkinEnd)) {
+                $score = 2;
+                $status = 'checkin';
+            } elseif ($now->between($checkoutStart, $checkoutEnd)) {
+                $score = 1;
+                $status = 'checkout';
             }
 
-            $shiftStart = Carbon::parse($shift->jam_masuk);
-            $shiftEnd = Carbon::parse($shift->jam_keluar);
-
-            // Rentang waktu untuk Check-in: 10 menit sebelum jam masuk sampai 30 menit sebelum jam keluar
-            $checkinStartTime = $shiftStart->copy()->subMinutes(10);
-            $checkinEndTime = $shiftEnd->copy()->subMinutes(30);
-
-            // Rentang waktu untuk Check-out: 30 menit sebelum jam keluar sampai 30 menit setelah jam keluar
-            $checkoutStartTime = $shiftEnd->copy()->subMinutes(30);
-            $checkoutEndTime = $shiftEnd->copy()->addMinutes(30);
-
-            $aksi = null;
-            $keterangan = '';
-
-            // Cek kondisi Check-in
-            if (is_null($jadwal->check_in) && $now->between($checkinStartTime, $checkinEndTime)) {
-                $aksi = 'checkin';
-                $keteranganAlert = 'Absen Masuk';
-            }
-            // Cek kondisi Check-out
-            elseif (!is_null($jadwal->check_in) && is_null($jadwal->check_out) && $now->between($checkoutStartTime, $checkoutEndTime)) {
-                $aksi = 'checkout';
-                $keteranganAlert = 'Absen Pulang';
-            } elseif (!is_null($jadwal->check_in) && !is_null($jadwal->check_out)) {
-                $aksi = 'done'; // Sudah absen masuk dan pulang
-                $keterangan = 'Sudah absen masuk dan pulang';
-            }
-
-            if ($aksi && $aksi !== 'done') {
-                $foundRelevantShift = true;
-                $responseDetails = [
-                    'nama' => $user->nama,
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $matchedShift = [
+                    'jadwal_id' => $jadwal->id,
                     'shift_id' => $shift->id,
-                    'shift_name' => $shift->nama_shift,
-                    'shift_start' => $shiftStart->format('H:i'),
-                    'shift_end' => $shiftEnd->format('H:i'),
-                    'aksi' => $aksi,
-                    'keterangan' => $keterangan
+                    'shift_name' => $shift->shift_name,
+                    'shift_start' => $shift->start_time,
+                    'shift_end' => $shift->end_time,
+                    'aksi' => $status,
+                    'keterangan' => $status == 'checkin' ? 'Absen Masuk' : 'Absen Pulang',
+                    'nama' => $user->nama
                 ];
-                break; // Ambil shift pertama yang relevan saja
             }
         }
 
-        if ($foundRelevantShift) {
-            return response()->json([
-                'status' => true,
-                'msg' => 'Jadwal dan aksi ditemukan.',
-                'data' => $responseDetails
-            ]);
-        } else {
-            // Jika semua jadwal sudah selesai atau tidak ada rentang waktu yang relevan
-            return response()->json([
-                'status' => false,
-                'msg' => 'Tidak ada jadwal yang relevan untuk absensi saat ini atau sudah absen.'
-            ]);
+        if ($matchedShift) {
+            return $this->respondSuccess('Jadwal ditemukan', $matchedShift);
         }
+
+        return $this->respondFail('Tidak ada jadwal yang cocok untuk waktu saat ini.');
+    } catch (\Exception $e) {
+        Log::error('CheckStatus Error: ' . $e->getMessage());
+        return $this->respondFail('Terjadi kesalahan pada server.', 500);
     }
+}
+
 
     public function checkin(Request $request)
     {
         try {
-            // Validasi input
-            $request->validate([
-                'nama' => 'required|string',
-                'shift_id' => 'required|integer',
-            ]);
-
-            // Cek user berdasarkan nama
-            $user = User::where('nama', $request->nama)->first();
-
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'msg' => '❌ User tidak ditemukan. Wajah mungkin tidak terdaftar dengan benar.'
-                ], 404);
-            }
-
-            // Cek jadwal hari ini dan shift
-            $jadwal = Scheadules::where('date_schedule', Carbon::today()->toDateString())
-                ->where('id_user', $user->id)
+            $jadwal = Scheadules::whereDate('date_schedule', Carbon::today())
+                ->where('id_user', $request->id)
                 ->where('id_shift', $request->shift_id)
                 ->first();
 
-            if (!$jadwal) {
-                return response()->json([
-                    'status' => false,
-                    'msg' => '❌ Jadwal tidak ditemukan untuk shift ini.'
-                ], 404);
+            if (!$jadwal) return $this->respondFail('Jadwal tidak ditemukan.');
+
+            if ($jadwal->check_in) {
+                return $this->respondFail('Anda sudah melakukan check-in sebelumnya.');
             }
 
-            if (!is_null($jadwal->check_in)) {
-                return response()->json([
-                    'status' => false,
-                    'msg' => 'Anda sudah absen masuk untuk shift ini.'
-                ], 409); // 409 Conflict cocok untuk status sudah ada
-            }
-
-            // Simpan check-in
-            $jadwal->check_in = now();
-            // Keterangan bisa diatur di sini jika ada logika spesifik, atau di checkStatus
-            // $jadwal->keterangan = 'Masuk Tepat Waktu'; // Contoh
+            $jadwal->check_in = Carbon::now();
+            $jadwal->keterangan = 'Absen Masuk';
             $jadwal->save();
 
-            return response()->json([
-                'status' => true,
-                'msg' => '✅ Check-in berhasil untuk ' . $user->nama
-            ]);
-        } catch (\Exception $e) {
-            // Log error jika perlu
-            Log::error('Check-in Error: ' . $e->getMessage());
+            return $this->respondSuccess('Check-in berhasil.');
 
-            return response()->json([
-                'status' => false,
-                'msg' => '⚠️ Terjadi kesalahan di server: ' . $e->getMessage()
-            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Check-in Error: ' . $e->getMessage());
+            return $this->respondFail('Gagal melakukan check-in.', 500);
         }
     }
-
 
     public function checkout(Request $request)
     {
         try {
-            Log::info('Checkout request:', $request->all());
-
-            $request->validate([
-                'nama' => 'required|string',
-                'shift_id' => 'required|integer'
-            ]);
-
-            $user = User::where('nama', $request->nama)->first();
-
-            if (!$user) {
-                Log::warning('User tidak ditemukan: ' . $request->nama);
-                return response()->json(['status' => false, 'msg' => 'Wajah tidak dikenali atau user tidak terdaftar.']);
-            }
-
-            $today = Carbon::today()->toDateString();
-
-            $jadwal = Scheadules::where('date_schedule', $today)
-                ->where('id_user', $user->id)
+            $jadwal = Scheadules::whereDate('date_schedule', Carbon::today())
+                ->where('id_user', $request->id)
                 ->where('id_shift', $request->shift_id)
                 ->first();
 
-            if (!$jadwal) {
-                Log::warning("Jadwal tidak ditemukan untuk user {$user->id} dan shift {$request->shift_id} di tanggal {$today}");
-                return response()->json(['status' => false, 'msg' => 'Jadwal tidak ditemukan.']);
+            if (!$jadwal) return $this->respondFail('Jadwal tidak ditemukan.');
+
+            if (!$jadwal->check_in) {
+                return $this->respondFail('Anda belum melakukan check-in.');
             }
 
-            if (is_null($jadwal->check_in)) {
-                return response()->json(['status' => false, 'msg' => 'Anda belum absen masuk untuk shift ini.']);
+            if ($jadwal->check_out) {
+                return $this->respondFail('Anda sudah melakukan check-out sebelumnya.');
             }
 
-            if (!is_null($jadwal->check_out)) {
-                return response()->json(['status' => false, 'msg' => 'Sudah check-out sebelumnya.']);
-            }
-
-            $jadwal->check_out = now();
-            // Keterangan bisa diatur di sini jika ada logika spesifik, atau di checkStatus
-            // $jadwal->keterangan = 'Pulang Tepat Waktu'; // Contoh
+            $jadwal->check_out = Carbon::now();
             $jadwal->save();
 
-            return response()->json([
-                'status' => true,
-                'msg' => 'Check-out berhasil untuk ' . $user->nama
-            ]);
+            return $this->respondSuccess('Check-out berhasil.');
+
         } catch (\Exception $e) {
-            Log::error('Checkout Error: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'msg' => 'Terjadi kesalahan di server.'
-            ], 500);
+            Log::error('Check-out Error: ' . $e->getMessage());
+            return $this->respondFail('Gagal melakukan check-out.', 500);
         }
     }
 
-
-    public function setKeterangan(Request $request)
+    // ========== HELPER RESPONSE JSON ==========
+    private function respondSuccess(string $message, array $data = [])
     {
-        $request->validate([
-            'id_user' => 'required',
-            'date_schedule' => 'required|date',
-            'id_shift' => 'required|exists:shift,id',
-            'keterangan' => 'required|string',
+        return response()->json([
+            'status' => true,
+            'msg' => $message,
+            'data' => $data
         ]);
+    }
 
-        $jadwal = Scheadules::where([
-            'id_user' => $request->id_user,
-            'date_schedule' => $request->date_schedule,
-            'id_shift' => $request->id_shift,
-        ])->first();
-
-        if ($jadwal) {
-            $jadwal->keterangan = $request->keterangan;
-            $jadwal->save();
-        }
-
-        return redirect()->back()->with('success', 'Keterangan berhasil diupdate.');
+    private function respondFail(string $message, int $code = 400)
+    {
+        return response()->json([
+            'status' => false,
+            'msg' => $message
+        ], $code);
     }
 }

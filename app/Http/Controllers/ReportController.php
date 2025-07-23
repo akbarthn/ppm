@@ -75,4 +75,6 @@ class ReportController extends Controller
 
         return view('reports.attendance', compact('scheadules'));
     }
+
+
 }

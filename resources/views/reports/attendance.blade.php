@@ -25,23 +25,37 @@
                         <th>Nama Karyawan</th>
                         <th>Tanggal</th>
                         <th>Shift</th>
-                        <th>Check-In</th>
-                        <th>Check-Out</th>
+                        <th>Masuk</th>
+                        <th>Pulang</th>
+                        <th>Keterangan</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($scheadules as $index => $item)
+                        @php
+                            $checkIn = $item->check_in ? \Carbon\Carbon::parse($item->check_in) : null;
+                            $scheduleDate = \Carbon\Carbon::parse($item->date_schedule);
+                            $shiftStart = \Carbon\Carbon::parse($item->date_schedule . ' ' . $item->shift->start_time);
+
+                            // Cek keterlambatan lebih dari 30 menit
+                            $isLate = $checkIn && $checkIn->diffInMinutes($shiftStart, false) < -30;
+                        @endphp
                         <tr class="text-center">
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $item->user->nama ?? '-' }}</td>
-                            <td>{{ \Carbon\Carbon::parse($item->date_schedule)->translatedFormat('d M Y') }}</td>
+                            <td>{{ $scheduleDate->translatedFormat('d M Y') }}</td>
                             <td>{{ $item->shift->name }}</td>
-                            <td>{{ $item->check_in ?? '-' }}</td>
+                            <td class="{{ $isLate ? 'text-white bg-danger' : '' }}">
+                                {{ $item->check_in ?? '-' }}
+                            </td>
                             <td>{{ $item->check_out ?? '-' }}</td>
+                            <td>
+                                {{ $item->check_in ? 'Masuk' : '-' }}
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center">Tidak ada data kehadiran.</td>
+                            <td colspan="7" class="text-center">Tidak ada data kehadiran.</td>
                         </tr>
                     @endforelse
                 </tbody>
